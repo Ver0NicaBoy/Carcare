@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบเปิดบิลและเบิกฟิล์ม</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; user-select: none; }
+        body { background-color: #f4f7f6; color: #333; padding: 15px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        
+        .order-header {
+            background: #2c3e50;
+            color: #fff;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .order-header .title { font-size: 16px; opacity: 0.9; }
+        .order-header .order-id { font-size: 20px; font-weight: bold; color: #f1c40f; }
+
+        .section-box { background: #fff; padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #e0e0e0; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        h2 { margin-bottom: 15px; font-size: 18px; color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 8px; }
+        
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-weight: bold; margin-bottom: 8px; color: #555; font-size: 14px; }
+        .large-input { width: 100%; font-size: 16px; padding: 12px; border: 1px solid #ccc; border-radius: 8px; }
+        .large-input:focus { outline: none; border-color: #3498db; }
+
+        .grid-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; }
+        .touch-card { background-color: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px 10px; text-align: center; cursor: pointer; font-weight: bold; color: #555; transition: 0.2s;}
+        .touch-card.selected { background-color: #e8f4f8; border-color: #3498db; color: #3498db; border-width: 2px;}
+        .profile-img { width: 50px; height: 50px; border-radius: 50%; background-color: #ddd; margin: 0 auto 10px auto; display: block; }
+
+        .part-list { display: flex; flex-direction: column; gap: 10px; }
+        .part-item { border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; display: flex; justify-content: space-between; align-items: center; background: #fafafa; }
+        .part-item.active { border-color: #2ecc71; background: #eafaf1; } 
+        .part-item.warning { border-color: #e74c3c; background: #fceceb; }
+
+        .part-info { font-size: 16px; font-weight: bold; }
+        .part-status { font-size: 13px; color: #777; display: block; margin-top: 4px; }
+        .badge-warning { color: #e74c3c; font-weight: bold; }
+        .badge-success { color: #27ae60; font-weight: bold; }
+
+        .btn-draw { padding: 10px 15px; font-size: 14px; font-weight: bold; border-radius: 6px; border: none; cursor: pointer; background: #3498db; color: white; transition: 0.1s;}
+        .btn-draw:active { transform: scale(0.95); }
+        .btn-draw.btn-redo { background: #e74c3c; }
+
+        .action-btn { width: 100%; padding: 18px; font-size: 18px; font-weight: bold; color: #fff; background-color: #27ae60; border: none; border-radius: 8px; cursor: pointer; margin-top: 15px; transition: 0.3s; }
+        .action-btn:disabled { background-color: #95a5a6; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="order-header">
+            <div class="title">📋 เลขออเดอร์</div>
+            <div class="order-id" id="display-order-id">รอสร้างเมื่อบันทึก...</div>
+        </div>
+
+        <div class="section-box">
+            <h2>1. ข้อมูลรถและลูกค้า</h2>
+            <div class="form-group">
+                <label>ทะเบียนรถ</label>
+                <input type="text" id="license-plate" class="large-input" placeholder="เช่น 1กข 1234">
+            </div>
+            <div class="form-group">
+                <label>รุ่น และ สีรถ</label>
+                <input type="text" id="car-detail" class="large-input" placeholder="เช่น CIVIC ขาว">
+            </div>
+            <div class="form-group">
+                <label>เบอร์โทรศัพท์ลูกค้า</label>
+                <input type="tel" id="customer-phone" class="large-input" placeholder="08X-XXX-XXXX">
+            </div>
+        </div>
+
+        <div class="section-box">
+            <h2>2. เลือกช่างผู้ปฏิบัติงาน</h2>
+            <div class="grid-container" id="tech-container">
+                <div class="touch-card" onclick="selectTech(this, 'สมชาย')">
+                    <div class="profile-img"></div>
+                    <div>สมชาย</div>
+                </div>
+                <div class="touch-card" onclick="selectTech(this, 'จอห์น')">
+                    <div class="profile-img"></div>
+                    <div>จอห์น</div>
+                </div>
+                <div class="touch-card" onclick="selectTech(this, 'อ่อง')">
+                    <div class="profile-img"></div>
+                    <div>อ่อง</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section-box">
+            <h2>3. รายการเบิกฟิล์ม</h2>
+            <div class="part-list" id="parts-container"></div>
+            
+            <button class="action-btn" id="submit-btn" onclick="submitJob()">บันทึกข้อมูลเข้าระบบ</button>
+        </div>
+    </div>
+
+    <script>
+        // 🚨 เอา URL ของ Web App มาใส่ตรงนี้
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbzSHV6ttFpXCFAyj5AfNTRhDanF_8H7rx5IOLIWnexYxtOsB2mRyRaYp9QVO7Zs-XAM/exec";
+        
+        let selectedTech = "";
+        
+        let partsData = {
+            "บานหน้าเต็ม": 0,
+            "บานหลัง": 0,
+            "ประตูหน้าซ้าย-ขวา": 0,
+            "ประตูหลังซ้าย-ขวา": 0
+        };
+
+        function selectTech(element, techName) {
+            let siblings = document.getElementById('tech-container').children;
+            for (let i = 0; i < siblings.length; i++) { siblings[i].classList.remove('selected'); }
+            element.classList.add('selected');
+            selectedTech = techName;
+        }
+
+        function renderParts() {
+            let container = document.getElementById('parts-container');
+            container.innerHTML = ""; 
+            
+            for (let partName in partsData) {
+                let count = partsData[partName];
+                let itemClass = count === 0 ? "" : (count === 1 ? "active" : "warning");
+                let statusText = count === 0 ? "ยังไม่เบิก" : (count === 1 ? `<span class="badge-success">เบิกแล้ว (รอบแรก)</span>` : `<span class="badge-warning">เบิกแก้เคลม (รวม ${count} รอบ)</span>`);
+                let btnText = count === 0 ? "+ เบิกฟิล์ม" : "+ เบิกซ่อม";
+                let btnClass = count === 0 ? "btn-draw" : "btn-draw btn-redo";
+                
+                let partHTML = `
+                    <div class="part-item ${itemClass}">
+                        <div><div class="part-info">${partName}</div><div class="part-status">${statusText}</div></div>
+                        <button class="${btnClass}" onclick="drawFilm('${partName}')">${btnText}</button>
+                    </div>`;
+                container.innerHTML += partHTML;
+            }
+        }
+
+        function drawFilm(partName) {
+            if(!selectedTech) { 
+                alert("กรุณาเลือกช่างก่อนเบิกฟิล์มครับ!"); 
+                document.getElementById('tech-container').scrollIntoView({ behavior: 'smooth' });
+                return; 
+            }
+            partsData[partName] += 1; 
+            renderParts(); 
+        }
+
+        async function submitJob() {
+            let plate = document.getElementById('license-plate').value.trim();
+            if (!plate || !selectedTech) { alert("กรุณากรอกข้อมูลรถและเลือกช่างครับ"); return; }
+            
+            let totalDrawn = Object.values(partsData).reduce((a, b) => a + b, 0);
+            if(totalDrawn === 0) { alert("ยังไม่มีการเบิกฟิล์มครับ"); return; }
+
+            let payload = {
+                licensePlate: plate, 
+                carDetail: document.getElementById('car-detail').value.trim(),
+                customerPhone: document.getElementById('customer-phone').value.trim(),
+                technician: selectedTech, 
+                filmUsage: partsData
+            };
+
+            // เปลี่ยนสถานะปุ่ม
+            let btn = document.getElementById('submit-btn');
+            btn.innerHTML = "กำลังบันทึกข้อมูล... ⏳";
+            btn.disabled = true;
+            btn.style.backgroundColor = "#f39c12";
+
+            try {
+                // ยิงข้อมูลไป Google Sheets
+                let response = await fetch(GAS_URL, {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                });
+                
+                let result = await response.json();
+
+                if(result.status === "success") {
+                    document.getElementById('display-order-id').innerText = result.orderId;
+                    
+                    // ดีเลย์นิดนึงให้คนใช้เห็นเลขออเดอร์ก่อนเด้ง Alert
+                    setTimeout(() => {
+                        alert(`✅ บันทึกสำเร็จ!\nเลขออเดอร์: ${result.orderId}`);
+                        window.location.reload(); 
+                    }, 300);
+                } else {
+                    throw new Error(result.message);
+                }
+            } catch (error) {
+                console.error("Error:", error);
+                alert("❌ เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง");
+                
+                btn.innerHTML = "บันทึกข้อมูลเข้าระบบ";
+                btn.disabled = false;
+                btn.style.backgroundColor = "#27ae60";
+            }
+        }
+
+        window.onload = () => { renderParts(); };
+    </script>
+</body>
+</html>
